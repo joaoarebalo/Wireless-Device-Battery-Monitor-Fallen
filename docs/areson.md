@@ -43,7 +43,7 @@ Offsets below count the report id as byte zero:
 | 2 | Status, 0 = OK | `00` |
 | 3–4 | Address, unused for `GetPower` | `00 00` |
 | 5 | Data length (2) | `02` |
-| 6 | Battery level, 0–10, in 10% steps | `08` = 80% |
+| 6 | Battery level: 0–10 in 10% steps on `FA07` / `FA08`, whole percentage 0–100 on `FA7B` / `FA7C` | `08` = 80% (`FA07`) |
 | 7 | Charging flag, any non-zero value | `00` = not charging |
 | 16 | Checksum; all 17 bytes sum to `0x55` (mod 256) | `3E` |
 
@@ -53,10 +53,15 @@ linked at the same time.
 
 ## Other Areson mice
 
-The older `FA7B` / `FA7C` receivers used by the Redragon M693 report the charge directly as a
-whole percentage at the same reply offset. Applying this driver's ×10 scale there would show
-800%, so those product ids are deliberately not claimed. Only `FA07` and `FA08` are handled;
-`FA08` is the alternate identity of the same family and has not been verified on this machine.
+The `FA7B` / `FA7C` receivers (the family used by the Redragon M693, and the Fallen Pantera Pro
+Wireless on `FA7C`) answer the same `GetPower` request with the same reply layout, but byte 6 is
+the charge as a whole percentage (0–100) instead of a 0–10 level. The driver claims these
+product ids too and reads byte 6 unscaled for them; a value above 100 is rejected as an invalid
+frame, like a level above 10 on `FA07` / `FA08`.
+
+Verified on a Fallen Pantera Pro Wireless (`25A7:FA7C`): the reply `09 04 00 00 00 02 37 …` is
+read as 55%. `FA7B` has not been verified on hardware, and neither has `FA08`, the alternate
+identity of the `FA07` family.
 
 ## Polling and identity
 
@@ -69,6 +74,8 @@ whole percentage at the same reply offset. Applying this driver's ×10 scale the
   uses a 30-minute grace period, matching the other passive drivers.
 - The device key is derived from vendor and product id (`areson:25A7:FA07`), so it survives the
   receive/sleep cycle and a receiver replug.
+- The device is named "Fallen Pantera Pro Wireless" on `FA7C` and "Redragon wireless mouse" on
+  the other product ids.
 
 ## Validation
 
